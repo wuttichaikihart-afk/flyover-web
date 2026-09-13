@@ -6,6 +6,7 @@ let gpxDataPoints = [];
 const mapStyles = {
     satellite: {
         version: 8,
+        glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
         sources: {
             'satellite-source': {
                 'type': 'raster',
@@ -118,12 +119,29 @@ function drawRunLayers() {
         'paint': { 'line-color': '#00FFFF', 'line-width': 8, 'line-opacity': 0.8 }
     });
     
-    map.addSource('runner', { 'type': 'geojson', 'data': turf.point(runCoordinates[0]) });
+    map.addSource('runner', { 'type': 'geojson', 'data': turf.point(runCoordinates[0], { hudText: '' }) });
     map.addLayer({
         'id': 'runner-dot',
         'type': 'circle',
         'source': 'runner',
         'paint': { 'circle-radius': 10, 'circle-color': '#FFFFFF', 'circle-stroke-width': 5, 'circle-stroke-color': '#FF0055' }
+    });
+    
+    map.addLayer({
+        'id': 'runner-hud',
+        'type': 'symbol',
+        'source': 'runner',
+        'layout': {
+            'text-field': ['get', 'hudText'],
+            'text-offset': [0, 2],
+            'text-anchor': 'top',
+            'text-size': 18
+        },
+        'paint': {
+            'text-color': '#FFFFFF',
+            'text-halo-color': '#000000',
+            'text-halo-width': 2
+        }
     });
 }
 
@@ -140,6 +158,9 @@ let isFlying = false;
 let isCancelled = false;
 let mediaRecorder;
 let recordedChunks = [];
+let currentVideoBlob = null;
+let currentVideoExt = '';
+let currentVideoFile = null;
 
 function lerpAngle(startAngle, targetAngle, smoothingAmount) {
     const delta = ((targetAngle - startAngle + 540) % 360) - 180;
@@ -198,8 +219,9 @@ async function startFlyover(shouldRecord = false) {
                     recordedChunks = [];
                     return;
                 }
-                const blob = new Blob(recordedChunks, { type: mimeType });
-                const videoFile = new File([blob], `Cinematic-Flyover.${ext}`, { type: mimeType });
+                currentVideoBlob = new Blob(recordedChunks, { type: mimeType });
+                currentVideoExt = ext;
+                currentVideoFile = new File([currentVideoBlob], `Cinematic-Flyover.${ext}`, { type: mimeType });
 
                 document.getElementById('controls').style.display = 'block';
                 document.getElementById('hud').style.display = 'flex';
@@ -207,27 +229,8 @@ async function startFlyover(shouldRecord = false) {
                 btn.disabled = false;
                 recBtn.disabled = false;
 
-                // ============================================
-                // ระบบแชร์วิดีโอตรงไปยังแอปอื่นๆ (Web Share API)
-                // ============================================
-                if (navigator.canShare && navigator.canShare({ files: [videoFile] })) {
-                    try {
-                        await navigator.share({
-                            files: [videoFile],
-                            title: 'My Running Flyover',
-                            text: 'ดูเส้นทางวิ่ง 3 มิติของฉันสิ!'
-                        });
-                        console.log('Shared successfully');
-                    } catch (error) {
-                        console.log('Share cancelled or failed:', error);
-                        // ถ้ากดยกเลิกการแชร์ ให้เซฟลงเครื่องเผื่อไว้
-                        downloadVideo(blob, ext);
-                    }
-                } else {
-                    // ถ้าทำในคอมที่ไม่มีแอปโซเชียลให้แชร์ ให้โหลดลงเครื่องแทน
-                    alert("อุปกรณ์นี้ไม่รองรับการแชร์เข้าแอปโดยตรง ระบบจะโหลดวิดีโอลงเครื่องแทนนะครับ");
-                    downloadVideo(blob, ext);
-                }
+                // Show Modal
+                document.getElementById('video-modal').style.display = 'block';
             };
             
             mediaRecorder.start();
@@ -284,12 +287,18 @@ async function startFlyover(shouldRecord = false) {
             }
         }
         
-        document.getElementById('hud-dist').innerHTML = `${currentDistance.toFixed(2)}<span class="hud-unit">km</span>`;
-        if (matchedPoint.hr) document.getElementById('hud-hr').innerHTML = `${matchedPoint.hr}<span class="hud-unit">bpm</span>`;
+        const currentDistanceStr = currentDistance.toFixed(2);
+        const hrStr = matchedPoint.hr ? matchedPoint.hr : '--';
+        let paceStr = '--:--';
+        
+        document.getElementById('hud-dist').innerHTML = `${currentDistanceStr}<span class="hud-unit">km</span>`;
+        if (matchedPoint.hr) document.getElementById('hud-hr').innerHTML = `${hrStr}<span class="hud-unit">bpm</span>`;
         if (matchedPoint.time && gpxDataPoints[0].time) {
-            const pace = formatPace(matchedPoint.time - gpxDataPoints[0].time, currentDistance);
-            document.getElementById('hud-pace').innerHTML = `${pace}<span class="hud-unit">/km</span>`;
+            paceStr = formatPace(matchedPoint.time - gpxDataPoints[0].time, currentDistance);
+            document.getElementById('hud-pace').innerHTML = `${paceStr}<span class="hud-unit">/km</span>`;
         }
+
+        const hudString = `${currentDistanceStr} km | Pace: ${paceStr} | HR: ${hrStr}`;
 
         const currentPoint = turf.along(routeLineString, currentDistance, { units: 'kilometers' });
         
@@ -305,7 +314,9 @@ async function startFlyover(shouldRecord = false) {
         if (currentCameraBearing === null) currentCameraBearing = targetBearing;
         currentCameraBearing = lerpAngle(currentCameraBearing, targetBearing, 0.05);
 
-        if (map.getSource('runner')) map.getSource('runner').setData(currentPoint);
+        if (map.getSource('runner')) {
+            map.getSource('runner').setData(turf.point(currentPoint.geometry.coordinates, { hudText: hudString }));
+        }
 
         map.jumpTo({ 
             center: currentPoint.geometry.coordinates, 
@@ -365,3 +376,29 @@ function stopFlyover() {
 document.getElementById('start-btn').addEventListener('click', () => startFlyover(false));
 document.getElementById('record-btn').addEventListener('click', () => startFlyover(true));
 document.getElementById('stop-btn').addEventListener('click', stopFlyover);
+
+document.getElementById('btn-share-video').addEventListener('click', async () => {
+    if (navigator.canShare && navigator.canShare({ files: [currentVideoFile] })) {
+        try {
+            await navigator.share({
+                files: [currentVideoFile],
+                title: 'My Running Flyover',
+                text: 'ดูเส้นทางวิ่ง 3 มิติของฉันสิ!'
+            });
+        } catch (error) {
+            console.log('Share error:', error);
+        }
+    } else {
+        alert("เบราว์เซอร์นี้ไม่รองรับการกดแชร์วิดีโอโดยตรง กรุณากดปุ่มเซฟลงเครื่องแทนครับ");
+    }
+});
+
+document.getElementById('btn-save-video').addEventListener('click', () => {
+    if (currentVideoBlob) {
+        downloadVideo(currentVideoBlob, currentVideoExt);
+    }
+});
+
+document.getElementById('btn-close-modal').addEventListener('click', () => {
+    document.getElementById('video-modal').style.display = 'none';
+});
