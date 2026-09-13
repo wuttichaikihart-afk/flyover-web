@@ -126,23 +126,6 @@ function drawRunLayers() {
         'source': 'runner',
         'paint': { 'circle-radius': 10, 'circle-color': '#FFFFFF', 'circle-stroke-width': 5, 'circle-stroke-color': '#FF0055' }
     });
-    
-    map.addLayer({
-        'id': 'runner-hud',
-        'type': 'symbol',
-        'source': 'runner',
-        'layout': {
-            'text-field': ['get', 'hudText'],
-            'text-offset': [0, 2],
-            'text-anchor': 'top',
-            'text-size': 18
-        },
-        'paint': {
-            'text-color': '#FFFFFF',
-            'text-halo-color': '#000000',
-            'text-halo-width': 2
-        }
-    });
 }
 
 document.getElementById('map-style').addEventListener('change', function(e) {
@@ -161,6 +144,8 @@ let recordedChunks = [];
 let currentVideoBlob = null;
 let currentVideoExt = '';
 let currentVideoFile = null;
+let compositeCanvas = document.createElement('canvas');
+let compositeCtx = compositeCanvas.getContext('2d');
 
 function lerpAngle(startAngle, targetAngle, smoothingAmount) {
     const delta = ((targetAngle - startAngle + 540) % 360) - 180;
@@ -199,7 +184,9 @@ async function startFlyover(shouldRecord = false) {
     if (shouldRecord) {
         try {
             const mapCanvas = map.getCanvas();
-            const stream = mapCanvas.captureStream(30); 
+            compositeCanvas.width = mapCanvas.width;
+            compositeCanvas.height = mapCanvas.height;
+            const stream = compositeCanvas.captureStream(30); 
             
             // ตรวจสอบว่าเบราว์เซอร์รองรับไฟล์แบบไหน (มือถือชอบ mp4, คอมชอบ webm)
             let mimeType = 'video/webm';
@@ -236,7 +223,6 @@ async function startFlyover(shouldRecord = false) {
             mediaRecorder.start();
             isRecording = true;
             document.getElementById('controls').style.display = 'none';
-            document.getElementById('hud').style.display = 'none';
         } catch (err) {
             alert("ไม่สามารถบันทึกวิดีโอได้: " + err.message); return;
         }
@@ -315,7 +301,7 @@ async function startFlyover(shouldRecord = false) {
         currentCameraBearing = lerpAngle(currentCameraBearing, targetBearing, 0.05);
 
         if (map.getSource('runner')) {
-            map.getSource('runner').setData(turf.point(currentPoint.geometry.coordinates, { hudText: hudString }));
+            map.getSource('runner').setData(turf.point(currentPoint.geometry.coordinates));
         }
 
         map.jumpTo({ 
@@ -324,6 +310,54 @@ async function startFlyover(shouldRecord = false) {
             pitch: 75,
             zoom: 17.2 
         });
+
+        if (isRecording) {
+            const cw = compositeCanvas.width;
+            const ch = compositeCanvas.height;
+            const mapCanvas = map.getCanvas();
+            compositeCtx.clearRect(0, 0, cw, ch);
+            compositeCtx.drawImage(mapCanvas, 0, 0);
+
+            const scale = Math.max(1, cw / 400); 
+            const boxWidth = Math.min(cw * 0.9, 600 * scale);
+            const boxHeight = 70 * scale;
+            const boxX = (cw - boxWidth) / 2;
+            const boxY = ch - boxHeight - (40 * scale); 
+
+            compositeCtx.fillStyle = 'rgba(20, 20, 20, 0.85)';
+            compositeCtx.beginPath();
+            compositeCtx.roundRect(boxX, boxY, boxWidth, boxHeight, 12 * scale); 
+            compositeCtx.fill();
+            compositeCtx.lineWidth = 1 * scale;
+            compositeCtx.strokeStyle = 'rgba(255,255,255,0.2)';
+            compositeCtx.stroke();
+
+            compositeCtx.textAlign = 'center';
+            const colWidth = boxWidth / 3;
+
+            compositeCtx.fillStyle = '#aaa';
+            compositeCtx.font = `600 ${10 * scale}px sans-serif`;
+            compositeCtx.fillText('DISTANCE', boxX + colWidth*0.5, boxY + (25 * scale));
+            compositeCtx.fillText('AVG PACE', boxX + colWidth*1.5, boxY + (25 * scale));
+            compositeCtx.fillText('HEART RATE', boxX + colWidth*2.5, boxY + (25 * scale));
+
+            const valY = boxY + (52 * scale);
+            
+            compositeCtx.textAlign = 'right';
+            compositeCtx.fillStyle = '#fff';
+            compositeCtx.font = `bold ${22 * scale}px sans-serif`;
+            compositeCtx.fillText(currentDistanceStr, boxX + colWidth*0.5 + (2*scale), valY);
+            compositeCtx.fillText(paceStr, boxX + colWidth*1.5 + (2*scale), valY);
+            compositeCtx.fillStyle = '#FF5A5F';
+            compositeCtx.fillText(hrStr, boxX + colWidth*2.5 + (2*scale), valY);
+
+            compositeCtx.font = `${12 * scale}px sans-serif`;
+            compositeCtx.textAlign = 'left';
+            compositeCtx.fillStyle = '#888';
+            compositeCtx.fillText('km', boxX + colWidth*0.5 + (6*scale), valY);
+            compositeCtx.fillText('/km', boxX + colWidth*1.5 + (6*scale), valY);
+            compositeCtx.fillText('bpm', boxX + colWidth*2.5 + (6*scale), valY);
+        }
 
         animationId = requestAnimationFrame(animate);
     }
