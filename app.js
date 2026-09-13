@@ -168,6 +168,7 @@ async function startFlyover(shouldRecord = false) {
     const recBtn = document.getElementById('record-btn');
     btn.disabled = true;
     recBtn.disabled = true;
+    document.getElementById('controls').style.display = 'none';
 
     if (shouldRecord) {
         try {
@@ -247,6 +248,7 @@ async function startFlyover(shouldRecord = false) {
             } else {
                 btn.disabled = false;
                 recBtn.disabled = false;
+                document.getElementById('controls').style.display = 'block';
             }
             startTime = null;
             return;
