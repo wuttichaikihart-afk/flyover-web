@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>3D Flyover (GPX Upload)</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.css" rel="stylesheet">
+    <script src="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/togeojson/0.16.0/togeojson.min.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: -apple-system, sans-serif; background: #f0f0f0; overflow: hidden; }
+        
+        /* ให้แผนที่เต็มจอเสมอ วิดีโอจะอัดตามสัดส่วนจอ */
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; display: none; }
+        
+        #upload-panel {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: white; padding: 30px; border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; z-index: 10;
+            width: 80%; max-width: 400px;
+        }
+        
+        #controls { 
+            display: none; position: absolute; top: 20px; left: 20px; z-index: 10; 
+            background: white; padding: 20px; border-radius: 12px; width: 250px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+        }
+        
+        .action-btn {
+            background: #2196F3; color: white; padding: 12px 24px; border: none;
+            border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer;
+            margin-top: 15px; width: 100%;
+        }
+        .action-btn:hover { background: #1976D2; }
+
+        .record-btn { background: #FF5A5F; }
+        .record-btn:hover { background: #e04a50; }
+        
+        .style-selector { margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; }
+        .style-selector label { font-size: 12px; color: #666; display: block; margin-bottom: 5px; }
+        .style-selector select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; margin-bottom: 10px; }
+
+        /* แผงหน้าปัด ปรับให้รองรับจอมือถือแนวตั้งด้วย */
+        #hud {
+            display: none; 
+            position: absolute; 
+            bottom: 40px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            background: rgba(20, 20, 20, 0.85); 
+            backdrop-filter: blur(5px);
+            color: white; 
+            padding: 15px 20px; 
+            border-radius: 12px; 
+            display: flex; 
+            gap: 20px; /* ลดระยะห่างลงสำหรับมือถือ */
+            font-family: -apple-system, sans-serif;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+            z-index: 10;
+            border: 1px solid rgba(255,255,255,0.1);
+            width: max-content;
+            max-width: 90%; /* ไม่ให้ล้นจอมือถือ */
+        }
+        .hud-item { text-align: center; flex: 1; }
+        .hud-label { font-size: 10px; color: #aaa; letter-spacing: 1px; font-weight: 600; margin-bottom: 5px; }
+        .hud-value { font-size: 22px; font-weight: bold; }
+        .hud-unit { font-size: 12px; font-weight: normal; color: #888; margin-left: 2px; }
+        .hud-hr { color: #FF5A5F; }
+        
+        /* ปรับขนาดตัวอักษรบนจอมือถือแนวตั้ง */
+        @media (max-width: 600px) {
+            #controls { left: 50%; transform: translateX(-50%); width: 85%; padding: 15px; }
+            #hud { bottom: 20px; padding: 10px 15px; gap: 10px; }
+            .hud-value { font-size: 18px; }
+            .hud-label { font-size: 9px; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="upload-panel">
+    <h2>อัปโหลดเส้นทางวิ่งของคุณ</h2>
+    <p>รองรับไฟล์ .gpx (ส่งออกจาก Garmin Connect ได้เลย)</p>
+    <input type="file" id="gpx-input" accept=".gpx">
+</div>
+
+<div id="controls">
+    <h3 id="run-title" style="margin-top:0;">My Run</h3>
+    
+    <div class="style-selector">
+        <label>ความเร็ววิดีโอ (Speed):</label>
+        <select id="speed-style">
+            <option value="0.25">0.25x (ช้ามากแบบสโลว์โมชัน)</option>
+            <option value="0.5">0.5x (ช้า / คล้ายภาพยนตร์)</option>
+            <option value="1" selected>1x (ความเร็วปกติ)</option>
+            <option value="2">2x (เร็ว)</option>
+            <option value="4">4x (เร็วมาก)</option>
+        </select>
+
+        <label>รูปแบบแผนที่:</label>
+        <select id="map-style">
+            <option value="satellite">🛰 แผนที่ดาวเทียม</option>
+            <option value="standard">🗺 แผนที่ปกติ</option>
+        </select>
+    </div>
+
+    <button class="action-btn" id="start-btn">▶ เล่น Flyover ปกติ</button>
+    <button class="action-btn record-btn" id="record-btn">🎬 บันทึกวิดีโอแผนที่ล้วนๆ</button>
+</div>
+
+<div id="hud">
+    <div class="hud-item">
+        <div class="hud-label">DISTANCE</div>
+        <div class="hud-value" id="hud-dist">0.00<span class="hud-unit">km</span></div>
+    </div>
+    <div class="hud-item">
+        <div class="hud-label">AVG PACE</div>
+        <div class="hud-value" id="hud-pace">--:--<span class="hud-unit">/km</span></div>
+    </div>
+    <div class="hud-item">
+        <div class="hud-label">HEART RATE</div>
+        <div class="hud-value hud-hr" id="hud-hr">--<span class="hud-unit">bpm</span></div>
+    </div>
+</div>
+
+<div id="map"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
