@@ -68,16 +68,43 @@
         .hud-unit { font-size: 12px; font-weight: normal; color: #888; margin-left: 2px; }
         .hud-hr { color: #FF5A5F; }
         
+        #stop-btn {
+            display: none;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 20;
+            background: rgba(20, 20, 20, 0.8);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 30px;
+            padding: 10px 18px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.2s ease;
+        }
+        #stop-btn:hover {
+            background: rgba(220, 40, 40, 0.85);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
         /* ปรับขนาดตัวอักษรบนจอมือถือแนวตั้ง */
         @media (max-width: 600px) {
             #controls { left: 50%; transform: translateX(-50%); width: 85%; padding: 15px; }
             #hud { bottom: 20px; padding: 10px 15px; gap: 10px; }
             .hud-value { font-size: 18px; }
             .hud-label { font-size: 9px; }
+            #stop-btn { top: 15px; left: 15px; padding: 8px 14px; font-size: 13px; }
         }
     </style>
 </head>
 <body>
+
+<button id="stop-btn">✕ หยุด / ย้อนกลับ</button>
 
 <div id="upload-panel">
     <h2>อัปโหลดเส้นทางวิ่งของคุณ</h2>

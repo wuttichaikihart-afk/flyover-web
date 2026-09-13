@@ -136,6 +136,8 @@ let animationId = null;
 let startTime = null;
 let currentCameraBearing = null; 
 let isRecording = false;
+let isFlying = false;
+let isCancelled = false;
 let mediaRecorder;
 let recordedChunks = [];
 
@@ -164,11 +166,14 @@ function downloadVideo(blob, ext) {
 }
 
 async function startFlyover(shouldRecord = false) {
+    isFlying = true;
+    isCancelled = false;
     const btn = document.getElementById('start-btn');
     const recBtn = document.getElementById('record-btn');
     btn.disabled = true;
     recBtn.disabled = true;
     document.getElementById('controls').style.display = 'none';
+    document.getElementById('stop-btn').style.display = 'block';
 
     if (shouldRecord) {
         try {
@@ -189,11 +194,18 @@ async function startFlyover(shouldRecord = false) {
             mediaRecorder.ondataavailable = function(e) { if (e.data.size > 0) recordedChunks.push(e.data); };
             
             mediaRecorder.onstop = async function() {
+                if (isCancelled) {
+                    recordedChunks = [];
+                    return;
+                }
                 const blob = new Blob(recordedChunks, { type: mimeType });
                 const videoFile = new File([blob], `Cinematic-Flyover.${ext}`, { type: mimeType });
 
                 document.getElementById('controls').style.display = 'block';
                 document.getElementById('hud').style.display = 'flex';
+                document.getElementById('stop-btn').style.display = 'none';
+                btn.disabled = false;
+                recBtn.disabled = false;
 
                 // ============================================
                 // ระบบแชร์วิดีโอตรงไปยังแอปอื่นๆ (Web Share API)
@@ -229,6 +241,7 @@ async function startFlyover(shouldRecord = false) {
 
     map.flyTo({ center: runCoordinates[0], zoom: 17.5, pitch: 75, duration: 2500 });
     await new Promise(r => setTimeout(r, 2500));
+    if (!isFlying) return;
 
     const totalDistance = turf.length(routeLineString, { units: 'kilometers' });
     const speedMultiplier = parseFloat(document.getElementById('speed-style').value);
@@ -242,6 +255,11 @@ async function startFlyover(shouldRecord = false) {
         const progress = (timestamp - startTime) / animationDuration;
 
         if (progress >= 1) {
+            isFlying = false;
+            document.getElementById('stop-btn').style.display = 'none';
+            if (map.getSource('route') && routeLineString) {
+                map.getSource('route').setData(routeLineString);
+            }
             if (isRecording && mediaRecorder.state !== 'inactive') {
                 mediaRecorder.stop();
                 isRecording = false;
@@ -304,5 +322,46 @@ async function startFlyover(shouldRecord = false) {
     animationId = requestAnimationFrame(animate);
 }
 
+function stopFlyover() {
+    isFlying = false;
+    isCancelled = true;
+
+    if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+    }
+    startTime = null;
+
+    if (map) {
+        map.stop();
+    }
+
+    if (isRecording && mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        isRecording = false;
+    }
+
+    const btn = document.getElementById('start-btn');
+    const recBtn = document.getElementById('record-btn');
+    btn.disabled = false;
+    recBtn.disabled = false;
+
+    document.getElementById('controls').style.display = 'block';
+    document.getElementById('hud').style.display = 'flex';
+    document.getElementById('stop-btn').style.display = 'none';
+
+    if (map && routeLineString) {
+        if (map.getSource('route')) {
+            map.getSource('route').setData(routeLineString);
+        }
+        if (map.getSource('runner')) {
+            map.getSource('runner').setData(turf.point(runCoordinates[0]));
+        }
+        const bounds = runCoordinates.reduce((b, coord) => b.extend(coord), new maplibregl.LngLatBounds(runCoordinates[0], runCoordinates[0]));
+        map.fitBounds(bounds, { padding: 50, pitch: 0, bearing: 0, duration: 1200 });
+    }
+}
+
 document.getElementById('start-btn').addEventListener('click', () => startFlyover(false));
 document.getElementById('record-btn').addEventListener('click', () => startFlyover(true));
+document.getElementById('stop-btn').addEventListener('click', stopFlyover);
