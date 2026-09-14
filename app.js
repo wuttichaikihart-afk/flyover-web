@@ -10,9 +10,9 @@ const mapStyles = {
         sources: {
             'satellite-source': {
                 'type': 'raster',
-                'tiles': ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+                'tiles': ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'],
                 'tileSize': 256,
-                'attribution': 'Tiles &copy; Esri'
+                'attribution': 'Map data &copy; Google'
             },
             'terrain-source': {
                 'type': 'raster-dem',
