@@ -94,12 +94,61 @@ function initMap() {
         style: mapStyles[initialStyle],
         center: runCoordinates[0],
         zoom: 14,
-        pitch: 0,
-        preserveDrawingBuffer: true
+        pitch: 0
     });
 
     map.on('style.load', () => {
         if (!map.getSource('route')) drawRunLayers();
+    });
+
+    map.on('render', () => {
+        if (isRecording) {
+            const cw = compositeCanvas.width;
+            const ch = compositeCanvas.height;
+            const mapCanvas = map.getCanvas();
+            compositeCtx.clearRect(0, 0, cw, ch);
+            compositeCtx.drawImage(mapCanvas, 0, 0);
+
+            const scale = Math.max(1, cw / 400); 
+            const boxWidth = Math.min(cw * 0.9, 600 * scale);
+            const boxHeight = 70 * scale;
+            const boxX = (cw - boxWidth) / 2;
+            const boxY = ch - boxHeight - (40 * scale); 
+
+            compositeCtx.fillStyle = 'rgba(20, 20, 20, 0.85)';
+            compositeCtx.beginPath();
+            compositeCtx.roundRect(boxX, boxY, boxWidth, boxHeight, 12 * scale); 
+            compositeCtx.fill();
+            compositeCtx.lineWidth = 1 * scale;
+            compositeCtx.strokeStyle = 'rgba(255,255,255,0.2)';
+            compositeCtx.stroke();
+
+            compositeCtx.textAlign = 'center';
+            const colWidth = boxWidth / 3;
+
+            compositeCtx.fillStyle = '#aaa';
+            compositeCtx.font = `600 ${10 * scale}px sans-serif`;
+            compositeCtx.fillText('DISTANCE', boxX + colWidth*0.5, boxY + (25 * scale));
+            compositeCtx.fillText('AVG PACE', boxX + colWidth*1.5, boxY + (25 * scale));
+            compositeCtx.fillText('HEART RATE', boxX + colWidth*2.5, boxY + (25 * scale));
+
+            const valY = boxY + (52 * scale);
+            
+            compositeCtx.textAlign = 'right';
+            compositeCtx.fillStyle = '#fff';
+            compositeCtx.font = `bold ${22 * scale}px sans-serif`;
+            compositeCtx.fillText(currentHudData.dist, boxX + colWidth*0.5 + (2*scale), valY);
+            compositeCtx.fillText(currentHudData.pace, boxX + colWidth*1.5 + (2*scale), valY);
+            compositeCtx.fillStyle = '#FF5A5F';
+            compositeCtx.fillText(currentHudData.hr, boxX + colWidth*2.5 + (2*scale), valY);
+
+            compositeCtx.font = `${12 * scale}px sans-serif`;
+            compositeCtx.textAlign = 'left';
+            compositeCtx.fillStyle = '#888';
+            compositeCtx.fillText('km', boxX + colWidth*0.5 + (6*scale), valY);
+            compositeCtx.fillText('/km', boxX + colWidth*1.5 + (6*scale), valY);
+            compositeCtx.fillText('bpm', boxX + colWidth*2.5 + (6*scale), valY);
+        }
     });
 
     map.on('load', () => {
@@ -146,6 +195,7 @@ let currentVideoExt = '';
 let currentVideoFile = null;
 let compositeCanvas = document.createElement('canvas');
 let compositeCtx = compositeCanvas.getContext('2d');
+let currentHudData = { dist: '0.00', pace: '--:--', hr: '--' };
 
 function lerpAngle(startAngle, targetAngle, smoothingAmount) {
     const delta = ((targetAngle - startAngle + 540) % 360) - 180;
@@ -284,12 +334,18 @@ async function startFlyover(shouldRecord = false) {
             document.getElementById('hud-pace').innerHTML = `${paceStr}<span class="hud-unit">/km</span>`;
         }
 
-        const hudString = `${currentDistanceStr} km | Pace: ${paceStr} | HR: ${hrStr}`;
+
+        currentHudData.dist = currentDistanceStr;
+        currentHudData.pace = paceStr;
+        currentHudData.hr = hrStr;
 
         const currentPoint = turf.along(routeLineString, currentDistance, { units: 'kilometers' });
         
         const drawnCoordinates = runCoordinates.slice(0, matchedPointIndex + 1);
         drawnCoordinates.push(currentPoint.geometry.coordinates);
+        
+        // Optimize route updating to reduce lag: only update every few frames or if points increased
+        // But for smoothness, we'll keep it unless it's too bad. Since we removed preserveDrawingBuffer, it might be fine.
         if (map.getSource('route') && drawnCoordinates.length > 1) {
             map.getSource('route').setData(turf.lineString(drawnCoordinates));
         }
@@ -310,54 +366,6 @@ async function startFlyover(shouldRecord = false) {
             pitch: 75,
             zoom: 17.2 
         });
-
-        if (isRecording) {
-            const cw = compositeCanvas.width;
-            const ch = compositeCanvas.height;
-            const mapCanvas = map.getCanvas();
-            compositeCtx.clearRect(0, 0, cw, ch);
-            compositeCtx.drawImage(mapCanvas, 0, 0);
-
-            const scale = Math.max(1, cw / 400); 
-            const boxWidth = Math.min(cw * 0.9, 600 * scale);
-            const boxHeight = 70 * scale;
-            const boxX = (cw - boxWidth) / 2;
-            const boxY = ch - boxHeight - (40 * scale); 
-
-            compositeCtx.fillStyle = 'rgba(20, 20, 20, 0.85)';
-            compositeCtx.beginPath();
-            compositeCtx.roundRect(boxX, boxY, boxWidth, boxHeight, 12 * scale); 
-            compositeCtx.fill();
-            compositeCtx.lineWidth = 1 * scale;
-            compositeCtx.strokeStyle = 'rgba(255,255,255,0.2)';
-            compositeCtx.stroke();
-
-            compositeCtx.textAlign = 'center';
-            const colWidth = boxWidth / 3;
-
-            compositeCtx.fillStyle = '#aaa';
-            compositeCtx.font = `600 ${10 * scale}px sans-serif`;
-            compositeCtx.fillText('DISTANCE', boxX + colWidth*0.5, boxY + (25 * scale));
-            compositeCtx.fillText('AVG PACE', boxX + colWidth*1.5, boxY + (25 * scale));
-            compositeCtx.fillText('HEART RATE', boxX + colWidth*2.5, boxY + (25 * scale));
-
-            const valY = boxY + (52 * scale);
-            
-            compositeCtx.textAlign = 'right';
-            compositeCtx.fillStyle = '#fff';
-            compositeCtx.font = `bold ${22 * scale}px sans-serif`;
-            compositeCtx.fillText(currentDistanceStr, boxX + colWidth*0.5 + (2*scale), valY);
-            compositeCtx.fillText(paceStr, boxX + colWidth*1.5 + (2*scale), valY);
-            compositeCtx.fillStyle = '#FF5A5F';
-            compositeCtx.fillText(hrStr, boxX + colWidth*2.5 + (2*scale), valY);
-
-            compositeCtx.font = `${12 * scale}px sans-serif`;
-            compositeCtx.textAlign = 'left';
-            compositeCtx.fillStyle = '#888';
-            compositeCtx.fillText('km', boxX + colWidth*0.5 + (6*scale), valY);
-            compositeCtx.fillText('/km', boxX + colWidth*1.5 + (6*scale), valY);
-            compositeCtx.fillText('bpm', boxX + colWidth*2.5 + (6*scale), valY);
-        }
 
         animationId = requestAnimationFrame(animate);
     }
