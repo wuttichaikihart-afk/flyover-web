@@ -446,20 +446,23 @@ document.getElementById('start-btn').addEventListener('click', () => startFlyove
 document.getElementById('record-btn').addEventListener('click', () => startFlyover(true));
 document.getElementById('stop-btn').addEventListener('click', stopFlyover);
 
-document.getElementById('btn-share-video').addEventListener('click', async () => {
-    if (navigator.canShare && navigator.canShare({ files: [currentVideoFile] })) {
-        try {
-            await navigator.share({
-                files: [currentVideoFile],
-                title: 'My Running Flyover',
-                text: 'ดูเส้นทางวิ่ง 3 มิติของฉันสิ!'
-            });
-        } catch (error) {
-            console.log('Share error:', error);
+document.querySelectorAll('.share-trigger').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        if (!currentVideoFile) return;
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'My Flyover Run',
+                    text: 'ดูเส้นทางวิ่ง 3 มิติของฉัน!',
+                    files: [currentVideoFile]
+                });
+            } catch (err) {
+                console.log('Share cancelled or failed', err);
+            }
+        } else {
+            alert('เบราว์เซอร์ของคุณไม่รองรับการแชร์ไฟล์วิดีโอโดยตรง กรุณากด "เซฟลงเครื่อง" แทนครับ');
         }
-    } else {
-        alert("เบราว์เซอร์นี้ไม่รองรับการกดแชร์วิดีโอโดยตรง กรุณากดปุ่มเซฟลงเครื่องแทนครับ");
-    }
+    });
 });
 
 document.getElementById('btn-save-video').addEventListener('click', () => {
