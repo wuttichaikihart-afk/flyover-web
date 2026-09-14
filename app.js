@@ -85,7 +85,7 @@ document.getElementById('gpx-input').addEventListener('change', function(e) {
         document.getElementById('upload-panel').style.display = 'none';
         document.getElementById('map').style.display = 'block';
         document.getElementById('controls').style.display = 'block';
-        document.getElementById('hud').style.display = 'flex'; 
+        
         document.getElementById('run-title').innerText = file.name.replace('.gpx', '');
         initMap();
     };
@@ -255,6 +255,7 @@ async function startFlyover(shouldRecord = false) {
     recBtn.disabled = true;
     document.getElementById('controls').style.display = 'none';
     document.getElementById('stop-btn').style.display = 'block';
+    document.getElementById('hud').style.display = 'block';
 
     if (shouldRecord) {
         try {
@@ -286,7 +287,7 @@ async function startFlyover(shouldRecord = false) {
                 currentVideoFile = new File([currentVideoBlob], `Cinematic-Flyover.${ext}`, { type: mimeType });
 
                 document.getElementById('controls').style.display = 'block';
-                document.getElementById('hud').style.display = 'flex';
+                document.getElementById('hud').style.display = 'none';
                 document.getElementById('stop-btn').style.display = 'none';
                 btn.disabled = false;
                 recBtn.disabled = false;
@@ -331,6 +332,7 @@ async function startFlyover(shouldRecord = false) {
                 btn.disabled = false;
                 recBtn.disabled = false;
                 document.getElementById('controls').style.display = 'block';
+                document.getElementById('hud').style.display = 'none';
             }
             startTime = null;
             return;
@@ -425,7 +427,7 @@ function stopFlyover() {
     recBtn.disabled = false;
 
     document.getElementById('controls').style.display = 'block';
-    document.getElementById('hud').style.display = 'flex';
+    document.getElementById('hud').style.display = 'none';
     document.getElementById('stop-btn').style.display = 'none';
 
     if (map && routeLineString) {
