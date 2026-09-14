@@ -22,24 +22,30 @@
         }
         
         #controls { 
-            display: none; position: absolute; top: 20px; left: 20px; z-index: 10; 
-            background: white; padding: 20px; border-radius: 12px; width: 250px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            display: none; position: absolute; z-index: 10; 
+            background: white; padding: 25px 20px 35px 20px; 
+            bottom: 0; left: 0; width: 100%; box-sizing: border-box;
+            border-radius: 24px 24px 0 0; 
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1); 
         }
         
         .action-btn {
-            background: #2196F3; color: white; padding: 12px 24px; border: none;
-            border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer;
-            margin-top: 15px; width: 100%;
+            background: #2196F3; color: white; padding: 14px 24px; border: none;
+            border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer;
+            margin-top: 15px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
         }
         .action-btn:hover { background: #1976D2; }
 
         .record-btn { background: #FF5A5F; }
         .record-btn:hover { background: #e04a50; }
         
-        .style-selector { margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; }
-        .style-selector label { font-size: 12px; color: #666; display: block; margin-bottom: 5px; }
-        .style-selector select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; margin-bottom: 10px; }
+        .style-selector { margin-top: 20px; }
+        .style-selector label { font-size: 13px; font-weight: 600; color: #555; display: block; margin-bottom: 8px; }
+        .style-selector select { 
+            width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; 
+            font-size: 15px; margin-bottom: 15px; background: #f9f9f9; outline: none;
+            -webkit-appearance: none; appearance: none;
+        }
 
         /* แผงหน้าปัด ปรับให้รองรับจอมือถือแนวตั้งด้วย */
         #hud {
@@ -96,7 +102,7 @@
             display: none;
             position: absolute;
             top: 20px;
-            left: 20px;
+            right: 20px;
             z-index: 20;
             background: rgba(20, 20, 20, 0.8);
             backdrop-filter: blur(8px);
@@ -119,15 +125,13 @@
         /* ปรับขนาดตัวอักษรบนจอมือถือแนวตั้ง */
         @media (max-width: 600px) {
             #upload-panel { width: 85%; padding: 20px; }
-            #controls { top: auto; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; gap: 8px; }
-            .action-btn { padding: 12px 15px; font-size: 14px; }
             #hud { top: 40px; }
             .hud-header h1 { font-size: 24px; }
             .hud-header p { font-size: 14px; margin-bottom: 15px; }
             .hud-value { font-size: 28px; }
             .hud-label { font-size: 11px; }
             .hud-unit { font-size: 12px; }
-            #stop-btn { top: 15px; left: 15px; padding: 8px 14px; font-size: 13px; }
+            #stop-btn { top: 15px; right: 15px; left: auto; padding: 8px 14px; font-size: 13px; }
         }
     </style>
 </head>
