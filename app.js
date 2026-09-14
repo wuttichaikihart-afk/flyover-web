@@ -65,16 +65,21 @@ document.getElementById('gpx-input').addEventListener('change', function(e) {
             const lon = parseFloat(pt.getAttribute('lon'));
             const timeNode = pt.getElementsByTagName('time')[0];
             const time = timeNode ? new Date(timeNode.textContent).getTime() : null;
+            
             let hr = null;
             const hrNode = pt.getElementsByTagNameNS('*', 'hr')[0]; 
             if (hrNode) hr = parseInt(hrNode.textContent);
+
+            let ele = 0;
+            const eleNode = pt.getElementsByTagName('ele')[0];
+            if (eleNode) ele = parseFloat(eleNode.textContent);
             
             if (i > 0) {
                 const prev = gpxDataPoints[i-1];
                 const dist = turf.distance(turf.point([prev.lon, prev.lat]), turf.point([lon, lat]), {units: 'kilometers'});
                 accumulatedDistance += dist;
             }
-            gpxDataPoints.push({ lat, lon, time, hr, dist: accumulatedDistance });
+            gpxDataPoints.push({ lat, lon, time, hr, ele, dist: accumulatedDistance });
         }
 
         document.getElementById('upload-panel').style.display = 'none';
@@ -110,44 +115,64 @@ function initMap() {
             compositeCtx.drawImage(mapCanvas, 0, 0);
 
             const scale = Math.max(1, cw / 400); 
-            const boxWidth = Math.min(cw * 0.9, 600 * scale);
-            const boxHeight = 70 * scale;
+            
+            // HUD position at Top
+            const boxWidth = Math.min(cw * 0.9, 500 * scale);
             const boxX = (cw - boxWidth) / 2;
-            const boxY = ch - boxHeight - (40 * scale); 
-
-            compositeCtx.fillStyle = 'rgba(20, 20, 20, 0.85)';
-            compositeCtx.beginPath();
-            compositeCtx.roundRect(boxX, boxY, boxWidth, boxHeight, 12 * scale); 
-            compositeCtx.fill();
-            compositeCtx.lineWidth = 1 * scale;
-            compositeCtx.strokeStyle = 'rgba(255,255,255,0.2)';
-            compositeCtx.stroke();
+            const topY = 60 * scale; 
 
             compositeCtx.textAlign = 'center';
+            
+            // Draw Text Shadow function
+            function setShadow() {
+                compositeCtx.shadowColor = 'rgba(0,0,0,0.8)';
+                compositeCtx.shadowBlur = 8 * scale;
+                compositeCtx.shadowOffsetX = 1 * scale;
+                compositeCtx.shadowOffsetY = 1 * scale;
+            }
+            function clearShadow() {
+                compositeCtx.shadowColor = 'transparent';
+                compositeCtx.shadowBlur = 0;
+                compositeCtx.shadowOffsetX = 0;
+                compositeCtx.shadowOffsetY = 0;
+            }
+
+            setShadow();
+
+            // HEADER (MY FLYOVER)
+            compositeCtx.fillStyle = '#fff';
+            compositeCtx.font = `900 ${28 * scale}px -apple-system, sans-serif`;
+            compositeCtx.fillText('MY FLYOVER', cw / 2, topY);
+
+            // Subtitle
+            compositeCtx.font = `600 ${16 * scale}px -apple-system, sans-serif`;
+            compositeCtx.fillText('Morning Run', cw / 2, topY + (25 * scale));
+
+            // STATS 3 Columns
+            const statY = topY + (70 * scale);
             const colWidth = boxWidth / 3;
 
-            compositeCtx.fillStyle = '#aaa';
-            compositeCtx.font = `600 ${10 * scale}px sans-serif`;
-            compositeCtx.fillText('DISTANCE', boxX + colWidth*0.5, boxY + (25 * scale));
-            compositeCtx.fillText('AVG PACE', boxX + colWidth*1.5, boxY + (25 * scale));
-            compositeCtx.fillText('HEART RATE', boxX + colWidth*2.5, boxY + (25 * scale));
+            // Labels
+            compositeCtx.font = `700 ${13 * scale}px -apple-system, sans-serif`;
+            compositeCtx.fillText('เพซ', boxX + colWidth*0.5, statY);
+            compositeCtx.fillText('ระดับความสูง', boxX + colWidth*1.5, statY);
+            compositeCtx.fillText('ระยะทาง', boxX + colWidth*2.5, statY);
 
-            const valY = boxY + (52 * scale);
-            
-            compositeCtx.textAlign = 'right';
-            compositeCtx.fillStyle = '#fff';
-            compositeCtx.font = `bold ${22 * scale}px sans-serif`;
-            compositeCtx.fillText(currentHudData.dist, boxX + colWidth*0.5 + (2*scale), valY);
-            compositeCtx.fillText(currentHudData.pace, boxX + colWidth*1.5 + (2*scale), valY);
-            compositeCtx.fillStyle = '#FF5A5F';
-            compositeCtx.fillText(currentHudData.hr, boxX + colWidth*2.5 + (2*scale), valY);
+            // Values
+            const valY = statY + (45 * scale);
+            compositeCtx.font = `900 ${38 * scale}px -apple-system, sans-serif`;
+            compositeCtx.fillText(currentHudData.pace, boxX + colWidth*0.5, valY);
+            compositeCtx.fillText(currentHudData.ele || '0', boxX + colWidth*1.5, valY);
+            compositeCtx.fillText(currentHudData.dist, boxX + colWidth*2.5, valY);
 
-            compositeCtx.font = `${12 * scale}px sans-serif`;
-            compositeCtx.textAlign = 'left';
-            compositeCtx.fillStyle = '#888';
-            compositeCtx.fillText('km', boxX + colWidth*0.5 + (6*scale), valY);
-            compositeCtx.fillText('/km', boxX + colWidth*1.5 + (6*scale), valY);
-            compositeCtx.fillText('bpm', boxX + colWidth*2.5 + (6*scale), valY);
+            // Units
+            const unitY = valY + (20 * scale);
+            compositeCtx.font = `700 ${14 * scale}px -apple-system, sans-serif`;
+            compositeCtx.fillText('/กม.', boxX + colWidth*0.5, unitY);
+            compositeCtx.fillText('ม.', boxX + colWidth*1.5, unitY);
+            compositeCtx.fillText('กม.', boxX + colWidth*2.5, unitY);
+
+            clearShadow();
         }
     });
 
@@ -324,20 +349,20 @@ async function startFlyover(shouldRecord = false) {
         }
         
         const currentDistanceStr = currentDistance.toFixed(2);
-        const hrStr = matchedPoint.hr ? matchedPoint.hr : '--';
+        const eleStr = matchedPoint.ele ? Math.round(matchedPoint.ele) : '0';
         let paceStr = '--:--';
         
-        document.getElementById('hud-dist').innerHTML = `${currentDistanceStr}<span class="hud-unit">km</span>`;
-        if (matchedPoint.hr) document.getElementById('hud-hr').innerHTML = `${hrStr}<span class="hud-unit">bpm</span>`;
+        document.getElementById('hud-dist').innerText = currentDistanceStr;
+        document.getElementById('hud-ele').innerText = eleStr;
+        
         if (matchedPoint.time && gpxDataPoints[0].time) {
             paceStr = formatPace(matchedPoint.time - gpxDataPoints[0].time, currentDistance);
-            document.getElementById('hud-pace').innerHTML = `${paceStr}<span class="hud-unit">/km</span>`;
+            document.getElementById('hud-pace').innerText = paceStr;
         }
-
 
         currentHudData.dist = currentDistanceStr;
         currentHudData.pace = paceStr;
-        currentHudData.hr = hrStr;
+        currentHudData.ele = eleStr;
 
         const currentPoint = turf.along(routeLineString, currentDistance, { units: 'kilometers' });
         

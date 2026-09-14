@@ -45,28 +45,52 @@
         #hud {
             display: none; 
             position: absolute; 
-            bottom: 40px; 
+            top: 50px; 
             left: 50%; 
             transform: translateX(-50%); 
-            background: rgba(20, 20, 20, 0.85); 
-            backdrop-filter: blur(5px);
             color: white; 
-            padding: 15px 20px; 
-            border-radius: 12px; 
-            display: flex; 
-            gap: 20px; /* ลดระยะห่างลงสำหรับมือถือ */
+            text-align: center;
             font-family: -apple-system, sans-serif;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
             z-index: 10;
-            border: 1px solid rgba(255,255,255,0.1);
-            width: max-content;
-            max-width: 90%; /* ไม่ให้ล้นจอมือถือ */
+            width: 100%;
+            max-width: 500px;
+            text-shadow: 1px 1px 4px rgba(0,0,0,0.8), 0px 0px 10px rgba(0,0,0,0.5);
         }
-        .hud-item { text-align: center; flex: 1; }
-        .hud-label { font-size: 10px; color: #aaa; letter-spacing: 1px; font-weight: 600; margin-bottom: 5px; }
-        .hud-value { font-size: 22px; font-weight: bold; }
-        .hud-unit { font-size: 12px; font-weight: normal; color: #888; margin-left: 2px; }
-        .hud-hr { color: #FF5A5F; }
+        .hud-header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .hud-header p {
+            margin: 5px 0 20px 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .hud-stats {
+            display: flex; 
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+        .hud-item { 
+            text-align: center; 
+            flex: 1; 
+        }
+        .hud-label { 
+            font-size: 13px; 
+            font-weight: 700; 
+            margin-bottom: 5px; 
+        }
+        .hud-value { 
+            font-size: 38px; 
+            font-weight: 900; 
+            margin-bottom: 2px;
+        }
+        .hud-unit { 
+            font-size: 14px; 
+            font-weight: 700; 
+        }
         
         #stop-btn {
             display: none;
@@ -94,10 +118,15 @@
 
         /* ปรับขนาดตัวอักษรบนจอมือถือแนวตั้ง */
         @media (max-width: 600px) {
-            #controls { left: 50%; transform: translateX(-50%); width: 85%; padding: 15px; }
-            #hud { bottom: 20px; padding: 10px 15px; gap: 10px; }
-            .hud-value { font-size: 18px; }
-            .hud-label { font-size: 9px; }
+            #upload-panel { width: 85%; padding: 20px; }
+            #controls { bottom: 20px; gap: 8px; width: 90%; }
+            .action-btn { padding: 12px 15px; font-size: 14px; }
+            #hud { top: 40px; }
+            .hud-header h1 { font-size: 24px; }
+            .hud-header p { font-size: 14px; margin-bottom: 15px; }
+            .hud-value { font-size: 28px; }
+            .hud-label { font-size: 11px; }
+            .hud-unit { font-size: 12px; }
             #stop-btn { top: 15px; left: 15px; padding: 8px 14px; font-size: 13px; }
         }
     </style>
@@ -145,17 +174,26 @@
 </div>
 
 <div id="hud">
-    <div class="hud-item">
-        <div class="hud-label">DISTANCE</div>
-        <div class="hud-value" id="hud-dist">0.00<span class="hud-unit">km</span></div>
+    <div class="hud-header">
+        <h1>MY FLYOVER</h1>
+        <p>Morning Run</p>
     </div>
-    <div class="hud-item">
-        <div class="hud-label">AVG PACE</div>
-        <div class="hud-value" id="hud-pace">--:--<span class="hud-unit">/km</span></div>
-    </div>
-    <div class="hud-item">
-        <div class="hud-label">HEART RATE</div>
-        <div class="hud-value hud-hr" id="hud-hr">--<span class="hud-unit">bpm</span></div>
+    <div class="hud-stats">
+        <div class="hud-item">
+            <div class="hud-label">เพซ</div>
+            <div class="hud-value" id="hud-pace">--:--</div>
+            <div class="hud-unit">/กม.</div>
+        </div>
+        <div class="hud-item">
+            <div class="hud-label">ระดับความสูง</div>
+            <div class="hud-value" id="hud-ele">--</div>
+            <div class="hud-unit">ม.</div>
+        </div>
+        <div class="hud-item">
+            <div class="hud-label">ระยะทาง</div>
+            <div class="hud-value" id="hud-dist">0.0</div>
+            <div class="hud-unit">กม.</div>
+        </div>
     </div>
 </div>
 
